@@ -3,6 +3,8 @@ from fastapi import HTTPException
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import httpx
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -36,6 +38,44 @@ Base.metadata.create_all(bind=engine)
 
 UPLOAD_DIR = "images"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+# Background keep-alive task: periodically ping the public URL
+KEEP_ALIVE_URL = "https://vehiciq-2.onrender.com/"
+KEEP_ALIVE_INTERVAL = 60  # seconds (10 minutes)
+
+async def _keep_alive_loop():
+    # slight startup delay
+    await asyncio.sleep(5)
+    async with httpx.AsyncClient(timeout=10) as client:
+        while True:
+            try:
+                resp = await client.get(KEEP_ALIVE_URL)
+                # optional: log status
+                print(f"Keep-alive ping status: {resp.status_code}")
+            except Exception as e:
+                print(f"Keep-alive ping failed: {e}")
+            try:
+                await asyncio.sleep(KEEP_ALIVE_INTERVAL)
+            except asyncio.CancelledError:
+                break
+
+
+@app.on_event("startup")
+async def _startup_keep_alive():
+    # attach task to app state so it can be cancelled on shutdown
+    app.state._keep_alive_task = asyncio.create_task(_keep_alive_loop())
+
+
+@app.on_event("shutdown")
+async def _shutdown_keep_alive():
+    task = getattr(app.state, "_keep_alive_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 @app.get("/")
 async def root():
