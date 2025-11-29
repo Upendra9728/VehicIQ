@@ -34,6 +34,10 @@ Base.metadata.create_all(bind=engine)
 UPLOAD_DIR = "images"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+@app.get("/")
+async def root():
+    return {"message": "VehicIQ API is running!"}
+
 @app.post("/upload/")
 def upload_vehicle(number: str = Form(...), owner: str = Form(...), image: UploadFile = File(...)):
     file_location = f"{UPLOAD_DIR}/{image.filename}"
