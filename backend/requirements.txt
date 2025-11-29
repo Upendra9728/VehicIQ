@@ -1,1 +1,5 @@
-fastapi uvicorn sqlalchemy pillow python-multipart
+fastapi
+uvicorn
+sqlalchemy
+pillow
+python-multipart
