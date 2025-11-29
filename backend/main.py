@@ -1,17 +1,5 @@
 from fastapi import HTTPException
 # ...existing code...
-
-@app.delete("/vehicle/{vehicle_id}")
-def delete_vehicle(vehicle_id: int):
-    db = SessionLocal()
-    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
-    if not vehicle:
-        db.close()
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    db.delete(vehicle)
-    db.commit()
-    db.close()
-    return {"message": "Vehicle deleted"}
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -83,3 +71,15 @@ def get_image(vehicle_id: int):
     if vehicle:
         return FileResponse(vehicle.image_path)
     return {"error": "Image not found"}
+
+@app.delete("/vehicle/{vehicle_id}")
+def delete_vehicle(vehicle_id: int):
+    db = SessionLocal()
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        db.close()
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    db.delete(vehicle)
+    db.commit()
+    db.close()
+    return {"message": "Vehicle deleted"}
