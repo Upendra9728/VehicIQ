@@ -1,3 +1,17 @@
+from fastapi import HTTPException
+# ...existing code...
+
+@app.delete("/vehicle/{vehicle_id}")
+def delete_vehicle(vehicle_id: int):
+    db = SessionLocal()
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        db.close()
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    db.delete(vehicle)
+    db.commit()
+    db.close()
+    return {"message": "Vehicle deleted"}
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +42,7 @@ class Vehicle(Base):
     number = Column(String, index=True)
     owner = Column(String, index=True)
     image_path = Column(String)
+    timestamp = Column(String)
 
 Base.metadata.create_all(bind=engine)
 
@@ -44,19 +59,21 @@ def upload_vehicle(number: str = Form(...), owner: str = Form(...), image: Uploa
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
     db = SessionLocal()
-    vehicle = Vehicle(number=number, owner=owner, image_path=file_location)
+    from datetime import datetime
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    vehicle = Vehicle(number=number, owner=owner, image_path=file_location, timestamp=timestamp)
     db.add(vehicle)
     db.commit()
     db.refresh(vehicle)
     db.close()
-    return {"id": vehicle.id, "number": number, "owner": owner, "image_path": file_location}
+    return {"id": vehicle.id, "number": number, "owner": owner, "image_path": file_location, "timestamp": timestamp}
 
 @app.get("/vehicles/")
 def get_vehicles():
     db = SessionLocal()
     vehicles = db.query(Vehicle).all()
     db.close()
-    return [{"id": v.id, "number": v.number, "owner": v.owner, "image_path": v.image_path} for v in vehicles]
+    return [{"id": v.id, "number": v.number, "owner": v.owner, "image_path": v.image_path, "timestamp": v.timestamp} for v in vehicles]
 
 @app.get("/image/{vehicle_id}")
 def get_image(vehicle_id: int):
