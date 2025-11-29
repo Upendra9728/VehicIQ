@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() => runApp(VehicIQApp());
 
@@ -42,19 +43,33 @@ class _VehicleFormState extends State<VehicleForm> {
   }
 
   Future<void> _uploadData() async {
-    if (_image == null || _numberController.text.isEmpty || _ownerController.text.isEmpty) return;
-    setState(() { _uploading = true; });
-    var uri = Uri.parse('http://10.0.2.2:8000/upload/');
+    if (_image == null ||
+        _numberController.text.isEmpty ||
+        _ownerController.text.isEmpty) return;
+
+    setState(() {
+      _uploading = true;
+    });
+
+    var uri = Uri.parse('https://vehiciq-1.onrender.com/upload/');
+
     var request = http.MultipartRequest('POST', uri)
       ..fields['number'] = _numberController.text
       ..fields['owner'] = _ownerController.text
       ..files.add(await http.MultipartFile.fromPath('image', _image!.path));
+
     var response = await request.send();
-    setState(() { _uploading = false; });
+
+    setState(() {
+      _uploading = false;
+    });
+
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload successful!')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Upload successful!')));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed!')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Upload failed!')));
     }
   }
 
@@ -96,13 +111,16 @@ class _VehicleFormState extends State<VehicleForm> {
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: _uploading ? null : _uploadData,
-              child: _uploading ? CircularProgressIndicator(color: Colors.white) : Text('Upload'),
+              child: _uploading
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text('Upload'),
             ),
             SizedBox(height: 32),
             ElevatedButton(
               child: Text('View Vehicles'),
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => VehicleList()));
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => VehicleList()));
               },
             ),
           ],
@@ -124,10 +142,16 @@ class _VehicleListState extends State<VehicleList> {
   bool loading = true;
 
   Future<void> fetchVehicles() async {
-    var response = await http.get(Uri.parse('http://10.0.2.2:8000/vehicles/'));
+    var response = await http
+        .get(Uri.parse('https://vehiciq-1.onrender.com/vehicles/'));
+
     if (response.statusCode == 200) {
       setState(() {
-        vehicles = List.from(List<Map<String, dynamic>>.from(response.body.isNotEmpty ? response.body : []));
+        vehicles = jsonDecode(response.body);
+        loading = false;
+      });
+    } else {
+      setState(() {
         loading = false;
       });
     }
@@ -153,7 +177,12 @@ class _VehicleListState extends State<VehicleList> {
                   title: Text(v['number'] ?? ''),
                   subtitle: Text(v['owner'] ?? ''),
                   leading: v['image_path'] != null
-                      ? Image.network('http://10.0.2.2:8000/image/${v['id']}', width: 50, height: 50)
+                      ? Image.network(
+                          'https://vehiciq-1.onrender.com/image/${v['id']}',
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 );
               },
